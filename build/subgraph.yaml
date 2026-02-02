@@ -1,0 +1,88 @@
+specVersion: 1.0.0
+indexerHints:
+  prune: auto
+schema:
+  file: schema.graphql
+dataSources:
+  - kind: ethereum
+    name: ZybraGroupFactoryV2
+    network: sepolia
+    source:
+      address: "0xd3AB80D2703ce2A0d17cA73ecF5d6397a3258890"
+      abi: ZybraGroupFactoryV2
+      startBlock: 10086719
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Protocol
+        - Group
+      abis:
+        - name: ZybraGroupFactoryV2
+          file: ZybraGroupFactoryV2\abis\ZybraGroupFactoryV2.json
+        - name: ZybraGroupV2
+          file: ZybraGroupFactoryV2\abis\ZybraGroupV2.json
+      eventHandlers:
+        - event: GroupDeployed(indexed address,indexed address,indexed
+            address,uint256,uint256,uint256,address)
+          handler: handleGroupDeployed
+      file: ZybraGroupFactoryV2\ZybraGroupFactoryV2.wasm
+templates:
+  - kind: ethereum
+    name: ZybraGroupV2
+    network: sepolia
+    source:
+      abi: ZybraGroupV2
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - User
+        - Group
+        - Member
+        - Contribution
+        - YieldClaim
+        - Withdrawal
+        - Cycle
+        - YieldEvent
+        - ProtocolFeeCollection
+        - UserDailySnapshot
+        - GroupDailySnapshot
+        - AdminChange
+      abis:
+        - name: ZybraGroupV2
+          file: ZybraGroupV2\abis\ZybraGroupV2.json
+      eventHandlers:
+        - event: Joined(indexed address)
+          handler: handleJoined
+        - event: Left(indexed address,uint256)
+          handler: handleLeft
+        - event: Contributed(indexed address,uint256,uint256)
+          handler: handleContributed
+        - event: YieldClaimed(indexed address,uint256)
+          handler: handleYieldClaimed
+        - event: YieldAccrued(uint256,uint256)
+          handler: handleYieldAccrued
+        - event: YieldDistributed(uint256,uint256,uint256)
+          handler: handleYieldDistributed
+        - event: BatchYieldDistributed(uint256[],uint256)
+          handler: handleBatchYieldDistributed
+        - event: Withdrawn(indexed address,uint256,uint256)
+          handler: handleWithdrawn
+        - event: GroupStartedEvent(uint256)
+          handler: handleGroupStarted
+        - event: GroupEndedEvent(uint256)
+          handler: handleGroupEnded
+        - event: AdminChanged(indexed address,indexed address)
+          handler: handleAdminChanged
+        - event: ProtocolFeeCollected(uint256,uint256)
+          handler: handleProtocolFeeCollected
+        - event: ProtocolFeeRecipientChanged(indexed address,indexed address)
+          handler: handleProtocolFeeRecipientChanged
+        - event: Paused()
+          handler: handlePaused
+        - event: Unpaused()
+          handler: handleUnpaused
+      file: templates\ZybraGroupV2\ZybraGroupV2.wasm

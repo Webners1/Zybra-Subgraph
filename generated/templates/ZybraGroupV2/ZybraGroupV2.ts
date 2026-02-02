@@ -74,6 +74,10 @@ export class Contributed__Params {
   get cycle(): BigInt {
     return this._event.parameters[2].value.toBigInt();
   }
+
+  get totalCapital(): BigInt {
+    return this._event.parameters[3].value.toBigInt();
+  }
 }
 
 export class Withdrawn extends ethereum.Event {

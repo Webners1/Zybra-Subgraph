@@ -22,7 +22,8 @@
     "inputs": [
       { "name": "member", "type": "address", "indexed": true },
       { "name": "amount", "type": "uint256", "indexed": false },
-      { "name": "cycle", "type": "uint256", "indexed": false }
+      { "name": "cycle", "type": "uint256", "indexed": false },
+      { "name": "totalCapital", "type": "uint256", "indexed": false }
     ],
     "anonymous": false
   },

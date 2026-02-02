@@ -46,6 +46,11 @@
         "name": "cycle",
         "type": "uint256",
         "indexed": false
+      },
+      {
+        "name": "totalCapital",
+        "type": "uint256",
+        "indexed": false
       }
     ],
     "anonymous": false

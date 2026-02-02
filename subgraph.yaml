@@ -13,7 +13,7 @@ dataSources:
     source:
       address: "0xd3AB80D2703ce2A0d17cA73ecF5d6397a3258890"
       abi: ZybraGroupFactoryV2
-      startBlock: 10086719 # Approximate Sepolia block - adjust if needed
+      startBlock: 10086719
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -64,7 +64,7 @@ templates:
         - event: Left(indexed address,uint256)
           handler: handleLeft
         # Contribution events
-        - event: Contributed(indexed address,uint256,uint256)
+        - event: Contributed(indexed address,uint256,uint256,uint256)
           handler: handleContributed
         # Yield events
         - event: YieldClaimed(indexed address,uint256)

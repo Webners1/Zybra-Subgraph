@@ -59,7 +59,7 @@ templates:
           handler: handleJoined
         - event: Left(indexed address,uint256)
           handler: handleLeft
-        - event: Contributed(indexed address,uint256,uint256)
+        - event: Contributed(indexed address,uint256,uint256,uint256)
           handler: handleContributed
         - event: YieldClaimed(indexed address,uint256)
           handler: handleYieldClaimed

@@ -23,8 +23,8 @@ function updateProtocolDailySnapshot(timestamp: BigInt, protocol: Protocol): voi
     snapshot.dayTimestamp = dayTimestamp;
     snapshot.dayStartTimestamp = dayTimestamp;
     snapshot.dailyContributions = ZERO;
-    snapshot.dailyYieldGenerated = ZERO;
     snapshot.dailyYieldClaimed = ZERO;
+    snapshot.dailyFeesCollected = ZERO;
     snapshot.dailyNewUsers = ZERO;
     snapshot.dailyNewGroups = ZERO;
   }
@@ -33,8 +33,8 @@ function updateProtocolDailySnapshot(timestamp: BigInt, protocol: Protocol): voi
   snapshot.activeGroups = protocol.activeGroups;
   snapshot.totalUsers = protocol.totalUsers;
   snapshot.totalContributions = protocol.totalContributions;
-  snapshot.totalYieldGenerated = protocol.totalYieldGenerated;
   snapshot.totalYieldClaimed = protocol.totalYieldClaimed;
+  snapshot.totalProtocolFees = protocol.totalProtocolFees;
   snapshot.dailyNewGroups = snapshot.dailyNewGroups.plus(ONE);
 
   snapshot.save();
@@ -50,7 +50,6 @@ export function handleGroupDeployed(event: GroupDeployed): void {
     protocol.endedGroups = ZERO;
     protocol.totalUsers = ZERO;
     protocol.totalContributions = ZERO;
-    protocol.totalYieldGenerated = ZERO;
     protocol.totalYieldClaimed = ZERO;
     protocol.totalProtocolFees = ZERO;
     protocol.factoryAddress = event.address;
@@ -71,6 +70,7 @@ export function handleGroupDeployed(event: GroupDeployed): void {
   group.admin = event.params.admin;
   group.asset = event.params.asset;
   group.vault = event.params.vault;
+  group.treasury = null;
   group.contributionAmount = event.params.contributionAmount;
   group.cycleDuration = event.params.cycleDuration;
   group.totalCycles = event.params.totalCycles;
@@ -87,13 +87,15 @@ export function handleGroupDeployed(event: GroupDeployed): void {
   group.totalCapitalInGroup = ZERO;
   group.totalContributions = ZERO;
   group.totalYieldGenerated = ZERO;
-  group.totalYieldDistributed = ZERO;
   group.totalYieldClaimed = ZERO;
   group.totalProtocolFees = ZERO;
+  group.pendingYieldNet = ZERO;
+  group.totalCapitalWithdrawn = ZERO;
+  group.totalYieldWithdrawn = ZERO;
 
   // Initialize time-weighted stats
   group.totalCapitalSeconds = ZERO;
-  group.accumulatedYieldPerCapSec = ZERO;
+  group.lastGlobalUpdateTime = event.block.timestamp;
 
   // Initialize member stats
   group.membersCount = 0;

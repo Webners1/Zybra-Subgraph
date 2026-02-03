@@ -44,10 +44,6 @@ export class Left__Params {
   get member(): Address {
     return this._event.parameters[0].value.toAddress();
   }
-
-  get refund(): BigInt {
-    return this._event.parameters[1].value.toBigInt();
-  }
 }
 
 export class Contributed extends ethereum.Event {
@@ -73,10 +69,6 @@ export class Contributed__Params {
 
   get cycle(): BigInt {
     return this._event.parameters[2].value.toBigInt();
-  }
-
-  get totalCapital(): BigInt {
-    return this._event.parameters[3].value.toBigInt();
   }
 }
 
@@ -128,86 +120,16 @@ export class YieldClaimed__Params {
   }
 }
 
-export class YieldAccrued extends ethereum.Event {
-  get params(): YieldAccrued__Params {
-    return new YieldAccrued__Params(this);
+export class GroupStarted extends ethereum.Event {
+  get params(): GroupStarted__Params {
+    return new GroupStarted__Params(this);
   }
 }
 
-export class YieldAccrued__Params {
-  _event: YieldAccrued;
+export class GroupStarted__Params {
+  _event: GroupStarted;
 
-  constructor(event: YieldAccrued) {
-    this._event = event;
-  }
-
-  get newYieldPerCapital(): BigInt {
-    return this._event.parameters[0].value.toBigInt();
-  }
-
-  get totalYield(): BigInt {
-    return this._event.parameters[1].value.toBigInt();
-  }
-}
-
-export class YieldDistributed extends ethereum.Event {
-  get params(): YieldDistributed__Params {
-    return new YieldDistributed__Params(this);
-  }
-}
-
-export class YieldDistributed__Params {
-  _event: YieldDistributed;
-
-  constructor(event: YieldDistributed) {
-    this._event = event;
-  }
-
-  get cycle(): BigInt {
-    return this._event.parameters[0].value.toBigInt();
-  }
-
-  get totalYield(): BigInt {
-    return this._event.parameters[1].value.toBigInt();
-  }
-
-  get eligibleCapital(): BigInt {
-    return this._event.parameters[2].value.toBigInt();
-  }
-}
-
-export class BatchYieldDistributed extends ethereum.Event {
-  get params(): BatchYieldDistributed__Params {
-    return new BatchYieldDistributed__Params(this);
-  }
-}
-
-export class BatchYieldDistributed__Params {
-  _event: BatchYieldDistributed;
-
-  constructor(event: BatchYieldDistributed) {
-    this._event = event;
-  }
-
-  get cycles(): Array<BigInt> {
-    return this._event.parameters[0].value.toBigIntArray();
-  }
-
-  get totalYield(): BigInt {
-    return this._event.parameters[1].value.toBigInt();
-  }
-}
-
-export class GroupStartedEvent extends ethereum.Event {
-  get params(): GroupStartedEvent__Params {
-    return new GroupStartedEvent__Params(this);
-  }
-}
-
-export class GroupStartedEvent__Params {
-  _event: GroupStartedEvent;
-
-  constructor(event: GroupStartedEvent) {
+  constructor(event: GroupStarted) {
     this._event = event;
   }
 
@@ -216,16 +138,16 @@ export class GroupStartedEvent__Params {
   }
 }
 
-export class GroupEndedEvent extends ethereum.Event {
-  get params(): GroupEndedEvent__Params {
-    return new GroupEndedEvent__Params(this);
+export class GroupEnded extends ethereum.Event {
+  get params(): GroupEnded__Params {
+    return new GroupEnded__Params(this);
   }
 }
 
-export class GroupEndedEvent__Params {
-  _event: GroupEndedEvent;
+export class GroupEnded__Params {
+  _event: GroupEnded;
 
-  constructor(event: GroupEndedEvent) {
+  constructor(event: GroupEnded) {
     this._event = event;
   }
 
@@ -234,69 +156,47 @@ export class GroupEndedEvent__Params {
   }
 }
 
-export class AdminChanged extends ethereum.Event {
-  get params(): AdminChanged__Params {
-    return new AdminChanged__Params(this);
+export class TreasuryUpdated extends ethereum.Event {
+  get params(): TreasuryUpdated__Params {
+    return new TreasuryUpdated__Params(this);
   }
 }
 
-export class AdminChanged__Params {
-  _event: AdminChanged;
+export class TreasuryUpdated__Params {
+  _event: TreasuryUpdated;
 
-  constructor(event: AdminChanged) {
+  constructor(event: TreasuryUpdated) {
     this._event = event;
   }
 
-  get oldAdmin(): Address {
+  get oldTreasury(): Address {
     return this._event.parameters[0].value.toAddress();
   }
 
-  get newAdmin(): Address {
+  get newTreasury(): Address {
     return this._event.parameters[1].value.toAddress();
   }
 }
 
-export class ProtocolFeeCollected extends ethereum.Event {
-  get params(): ProtocolFeeCollected__Params {
-    return new ProtocolFeeCollected__Params(this);
+export class FeesCollected extends ethereum.Event {
+  get params(): FeesCollected__Params {
+    return new FeesCollected__Params(this);
   }
 }
 
-export class ProtocolFeeCollected__Params {
-  _event: ProtocolFeeCollected;
+export class FeesCollected__Params {
+  _event: FeesCollected;
 
-  constructor(event: ProtocolFeeCollected) {
+  constructor(event: FeesCollected) {
     this._event = event;
+  }
+
+  get treasury(): Address {
+    return this._event.parameters[0].value.toAddress();
   }
 
   get amount(): BigInt {
-    return this._event.parameters[0].value.toBigInt();
-  }
-
-  get cycle(): BigInt {
     return this._event.parameters[1].value.toBigInt();
-  }
-}
-
-export class ProtocolFeeRecipientChanged extends ethereum.Event {
-  get params(): ProtocolFeeRecipientChanged__Params {
-    return new ProtocolFeeRecipientChanged__Params(this);
-  }
-}
-
-export class ProtocolFeeRecipientChanged__Params {
-  _event: ProtocolFeeRecipientChanged;
-
-  constructor(event: ProtocolFeeRecipientChanged) {
-    this._event = event;
-  }
-
-  get oldRecipient(): Address {
-    return this._event.parameters[0].value.toAddress();
-  }
-
-  get newRecipient(): Address {
-    return this._event.parameters[1].value.toAddress();
   }
 }
 
@@ -394,32 +294,120 @@ export class ZybraGroupV2__membersResult {
 export class ZybraGroupV2__getMemberInfoResult {
   value0: BigInt;
   value1: BigInt;
-  value2: boolean;
+  value2: BigInt;
+  value3: boolean;
+  value4: BigInt;
 
-  constructor(value0: BigInt, value1: BigInt, value2: boolean) {
+  constructor(
+    value0: BigInt,
+    value1: BigInt,
+    value2: BigInt,
+    value3: boolean,
+    value4: BigInt,
+  ) {
     this.value0 = value0;
     this.value1 = value1;
     this.value2 = value2;
+    this.value3 = value3;
+    this.value4 = value4;
   }
 
   toMap(): TypedMap<string, ethereum.Value> {
     let map = new TypedMap<string, ethereum.Value>();
     map.set("value0", ethereum.Value.fromUnsignedBigInt(this.value0));
     map.set("value1", ethereum.Value.fromUnsignedBigInt(this.value1));
-    map.set("value2", ethereum.Value.fromBoolean(this.value2));
+    map.set("value2", ethereum.Value.fromUnsignedBigInt(this.value2));
+    map.set("value3", ethereum.Value.fromBoolean(this.value3));
+    map.set("value4", ethereum.Value.fromUnsignedBigInt(this.value4));
     return map;
   }
 
-  getCapital(): BigInt {
+  getCapitalInGroup(): BigInt {
     return this.value0;
   }
 
-  getPending(): BigInt {
+  getPendingYieldAmount(): BigInt {
     return this.value1;
   }
 
-  getActive(): boolean {
+  getLastContributedCycle(): BigInt {
     return this.value2;
+  }
+
+  getIsActive(): boolean {
+    return this.value3;
+  }
+
+  getCapitalSeconds(): BigInt {
+    return this.value4;
+  }
+}
+
+export class ZybraGroupV2__getGroupStatusResult {
+  value0: boolean;
+  value1: boolean;
+  value2: BigInt;
+  value3: BigInt;
+  value4: BigInt;
+  value5: BigInt;
+  value6: BigInt;
+
+  constructor(
+    value0: boolean,
+    value1: boolean,
+    value2: BigInt,
+    value3: BigInt,
+    value4: BigInt,
+    value5: BigInt,
+    value6: BigInt,
+  ) {
+    this.value0 = value0;
+    this.value1 = value1;
+    this.value2 = value2;
+    this.value3 = value3;
+    this.value4 = value4;
+    this.value5 = value5;
+    this.value6 = value6;
+  }
+
+  toMap(): TypedMap<string, ethereum.Value> {
+    let map = new TypedMap<string, ethereum.Value>();
+    map.set("value0", ethereum.Value.fromBoolean(this.value0));
+    map.set("value1", ethereum.Value.fromBoolean(this.value1));
+    map.set("value2", ethereum.Value.fromUnsignedBigInt(this.value2));
+    map.set("value3", ethereum.Value.fromUnsignedBigInt(this.value3));
+    map.set("value4", ethereum.Value.fromUnsignedBigInt(this.value4));
+    map.set("value5", ethereum.Value.fromUnsignedBigInt(this.value5));
+    map.set("value6", ethereum.Value.fromUnsignedBigInt(this.value6));
+    return map;
+  }
+
+  getStarted(): boolean {
+    return this.value0;
+  }
+
+  getEnded(): boolean {
+    return this.value1;
+  }
+
+  getCurrentCycle(): BigInt {
+    return this.value2;
+  }
+
+  getTotalMembers(): BigInt {
+    return this.value3;
+  }
+
+  getTotalCapital(): BigInt {
+    return this.value4;
+  }
+
+  getTotalYield(): BigInt {
+    return this.value5;
+  }
+
+  getFeesAccumulated(): BigInt {
+    return this.value6;
   }
 }
 
@@ -773,48 +761,29 @@ export class ZybraGroupV2 extends ethereum.SmartContract {
     );
   }
 
-  pendingYield(user: Address): BigInt {
-    let result = super.call("pendingYield", "pendingYield(address):(uint256)", [
-      ethereum.Value.fromAddress(user),
-    ]);
-
-    return result[0].toBigInt();
-  }
-
-  try_pendingYield(user: Address): ethereum.CallResult<BigInt> {
-    let result = super.tryCall(
-      "pendingYield",
-      "pendingYield(address):(uint256)",
-      [ethereum.Value.fromAddress(user)],
-    );
-    if (result.reverted) {
-      return new ethereum.CallResult();
-    }
-    let value = result.value;
-    return ethereum.CallResult.fromValue(value[0].toBigInt());
-  }
-
-  getMemberInfo(_member: Address): ZybraGroupV2__getMemberInfoResult {
+  getMemberInfo(member: Address): ZybraGroupV2__getMemberInfoResult {
     let result = super.call(
       "getMemberInfo",
-      "getMemberInfo(address):(uint256,uint256,bool)",
-      [ethereum.Value.fromAddress(_member)],
+      "getMemberInfo(address):(uint256,uint256,uint256,bool,uint256)",
+      [ethereum.Value.fromAddress(member)],
     );
 
     return new ZybraGroupV2__getMemberInfoResult(
       result[0].toBigInt(),
       result[1].toBigInt(),
-      result[2].toBoolean(),
+      result[2].toBigInt(),
+      result[3].toBoolean(),
+      result[4].toBigInt(),
     );
   }
 
   try_getMemberInfo(
-    _member: Address,
+    member: Address,
   ): ethereum.CallResult<ZybraGroupV2__getMemberInfoResult> {
     let result = super.tryCall(
       "getMemberInfo",
-      "getMemberInfo(address):(uint256,uint256,bool)",
-      [ethereum.Value.fromAddress(_member)],
+      "getMemberInfo(address):(uint256,uint256,uint256,bool,uint256)",
+      [ethereum.Value.fromAddress(member)],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -824,7 +793,50 @@ export class ZybraGroupV2 extends ethereum.SmartContract {
       new ZybraGroupV2__getMemberInfoResult(
         value[0].toBigInt(),
         value[1].toBigInt(),
-        value[2].toBoolean(),
+        value[2].toBigInt(),
+        value[3].toBoolean(),
+        value[4].toBigInt(),
+      ),
+    );
+  }
+
+  getGroupStatus(): ZybraGroupV2__getGroupStatusResult {
+    let result = super.call(
+      "getGroupStatus",
+      "getGroupStatus():(bool,bool,uint256,uint256,uint256,uint256,uint256)",
+      [],
+    );
+
+    return new ZybraGroupV2__getGroupStatusResult(
+      result[0].toBoolean(),
+      result[1].toBoolean(),
+      result[2].toBigInt(),
+      result[3].toBigInt(),
+      result[4].toBigInt(),
+      result[5].toBigInt(),
+      result[6].toBigInt(),
+    );
+  }
+
+  try_getGroupStatus(): ethereum.CallResult<ZybraGroupV2__getGroupStatusResult> {
+    let result = super.tryCall(
+      "getGroupStatus",
+      "getGroupStatus():(bool,bool,uint256,uint256,uint256,uint256,uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(
+      new ZybraGroupV2__getGroupStatusResult(
+        value[0].toBoolean(),
+        value[1].toBoolean(),
+        value[2].toBigInt(),
+        value[3].toBigInt(),
+        value[4].toBigInt(),
+        value[5].toBigInt(),
+        value[6].toBigInt(),
       ),
     );
   }

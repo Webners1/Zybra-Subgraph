@@ -11,8 +11,7 @@
     "type": "event",
     "name": "Left",
     "inputs": [
-      { "name": "member", "type": "address", "indexed": true },
-      { "name": "refund", "type": "uint256", "indexed": false }
+      { "name": "member", "type": "address", "indexed": true }
     ],
     "anonymous": false
   },
@@ -22,8 +21,7 @@
     "inputs": [
       { "name": "member", "type": "address", "indexed": true },
       { "name": "amount", "type": "uint256", "indexed": false },
-      { "name": "cycle", "type": "uint256", "indexed": false },
-      { "name": "totalCapital", "type": "uint256", "indexed": false }
+      { "name": "cycle", "type": "uint256", "indexed": false }
     ],
     "anonymous": false
   },
@@ -48,35 +46,7 @@
   },
   {
     "type": "event",
-    "name": "YieldAccrued",
-    "inputs": [
-      { "name": "newYieldPerCapital", "type": "uint256", "indexed": false },
-      { "name": "totalYield", "type": "uint256", "indexed": false }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "YieldDistributed",
-    "inputs": [
-      { "name": "cycle", "type": "uint256", "indexed": false },
-      { "name": "totalYield", "type": "uint256", "indexed": false },
-      { "name": "eligibleCapital", "type": "uint256", "indexed": false }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "BatchYieldDistributed",
-    "inputs": [
-      { "name": "cycles", "type": "uint256[]", "indexed": false },
-      { "name": "totalYield", "type": "uint256", "indexed": false }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "GroupStartedEvent",
+    "name": "GroupStarted",
     "inputs": [
       { "name": "timestamp", "type": "uint256", "indexed": false }
     ],
@@ -84,7 +54,7 @@
   },
   {
     "type": "event",
-    "name": "GroupEndedEvent",
+    "name": "GroupEnded",
     "inputs": [
       { "name": "timestamp", "type": "uint256", "indexed": false }
     ],
@@ -92,28 +62,19 @@
   },
   {
     "type": "event",
-    "name": "AdminChanged",
+    "name": "TreasuryUpdated",
     "inputs": [
-      { "name": "oldAdmin", "type": "address", "indexed": true },
-      { "name": "newAdmin", "type": "address", "indexed": true }
+      { "name": "oldTreasury", "type": "address", "indexed": true },
+      { "name": "newTreasury", "type": "address", "indexed": true }
     ],
     "anonymous": false
   },
   {
     "type": "event",
-    "name": "ProtocolFeeCollected",
+    "name": "FeesCollected",
     "inputs": [
-      { "name": "amount", "type": "uint256", "indexed": false },
-      { "name": "cycle", "type": "uint256", "indexed": false }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "ProtocolFeeRecipientChanged",
-    "inputs": [
-      { "name": "oldRecipient", "type": "address", "indexed": true },
-      { "name": "newRecipient", "type": "address", "indexed": true }
+      { "name": "treasury", "type": "address", "indexed": true },
+      { "name": "amount", "type": "uint256", "indexed": false }
     ],
     "anonymous": false
   },
@@ -257,19 +218,29 @@
   },
   {
     "type": "function",
-    "name": "pendingYield",
-    "inputs": [{ "name": "user", "type": "address" }],
-    "outputs": [{ "name": "", "type": "uint256" }],
+    "name": "getMemberInfo",
+    "inputs": [{ "name": "member", "type": "address" }],
+    "outputs": [
+      { "name": "capitalInGroup", "type": "uint256" },
+      { "name": "pendingYieldAmount", "type": "uint256" },
+      { "name": "lastContributedCycle", "type": "uint256" },
+      { "name": "isActive", "type": "bool" },
+      { "name": "capitalSeconds", "type": "uint256" }
+    ],
     "stateMutability": "view"
   },
   {
     "type": "function",
-    "name": "getMemberInfo",
-    "inputs": [{ "name": "_member", "type": "address" }],
+    "name": "getGroupStatus",
+    "inputs": [],
     "outputs": [
-      { "name": "capital", "type": "uint256" },
-      { "name": "pending", "type": "uint256" },
-      { "name": "active", "type": "bool" }
+      { "name": "started", "type": "bool" },
+      { "name": "ended", "type": "bool" },
+      { "name": "currentCycle", "type": "uint256" },
+      { "name": "totalMembers", "type": "uint256" },
+      { "name": "totalCapital", "type": "uint256" },
+      { "name": "totalYield", "type": "uint256" },
+      { "name": "feesAccumulated", "type": "uint256" }
     ],
     "stateMutability": "view"
   }

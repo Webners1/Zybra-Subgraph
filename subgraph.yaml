@@ -11,9 +11,9 @@ dataSources:
     # ========================================
     network: sepolia
     source:
-      address: "0xd3AB80D2703ce2A0d17cA73ecF5d6397a3258890"
+      address: "0xf1C4C22Ad8f22F3bA45bacA3e8C447A224f5aCa4"
       abi: ZybraGroupFactoryV2
-      startBlock: 10086719
+      startBlock: 10086719 # Approximate Sepolia block - adjust if needed
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -49,11 +49,10 @@ templates:
         - YieldClaim
         - Withdrawal
         - Cycle
-        - YieldEvent
-        - ProtocolFeeCollection
+        - FeeCollection
         - UserDailySnapshot
         - GroupDailySnapshot
-        - AdminChange
+        - Treasury
       abis:
         - name: ZybraGroupV2
           file: ./abis/ZybraGroupV2.json
@@ -61,36 +60,27 @@ templates:
         # Member events
         - event: Joined(indexed address)
           handler: handleJoined
-        - event: Left(indexed address,uint256)
+        - event: Left(indexed address)
           handler: handleLeft
         # Contribution events
-        - event: Contributed(indexed address,uint256,uint256,uint256)
+        - event: Contributed(indexed address,uint256,uint256)
           handler: handleContributed
         # Yield events
         - event: YieldClaimed(indexed address,uint256)
           handler: handleYieldClaimed
-        - event: YieldAccrued(uint256,uint256)
-          handler: handleYieldAccrued
-        - event: YieldDistributed(uint256,uint256,uint256)
-          handler: handleYieldDistributed
-        - event: BatchYieldDistributed(uint256[],uint256)
-          handler: handleBatchYieldDistributed
         # Withdrawal events
         - event: Withdrawn(indexed address,uint256,uint256)
           handler: handleWithdrawn
-          # Note: In contract ABI, the 3rd param is 'yield' but renamed to 'yieldAmount' to avoid reserved keyword
         # Group lifecycle events
-        - event: GroupStartedEvent(uint256)
+        - event: GroupStarted(uint256)
           handler: handleGroupStarted
-        - event: GroupEndedEvent(uint256)
+        - event: GroupEnded(uint256)
           handler: handleGroupEnded
-        # Admin events
-        - event: AdminChanged(indexed address,indexed address)
-          handler: handleAdminChanged
-        - event: ProtocolFeeCollected(uint256,uint256)
-          handler: handleProtocolFeeCollected
-        - event: ProtocolFeeRecipientChanged(indexed address,indexed address)
-          handler: handleProtocolFeeRecipientChanged
+        # Treasury / fee events
+        - event: TreasuryUpdated(indexed address,indexed address)
+          handler: handleTreasuryUpdated
+        - event: FeesCollected(indexed address,uint256)
+          handler: handleFeesCollected
         # Pause events
         - event: Paused()
           handler: handlePaused

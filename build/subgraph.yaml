@@ -8,7 +8,7 @@ dataSources:
     name: ZybraGroupFactoryV2
     network: sepolia
     source:
-      address: "0xd3AB80D2703ce2A0d17cA73ecF5d6397a3258890"
+      address: "0xf1C4C22Ad8f22F3bA45bacA3e8C447A224f5aCa4"
       abi: ZybraGroupFactoryV2
       startBlock: 10086719
     mapping:
@@ -46,41 +46,32 @@ templates:
         - YieldClaim
         - Withdrawal
         - Cycle
-        - YieldEvent
-        - ProtocolFeeCollection
+        - FeeCollection
         - UserDailySnapshot
         - GroupDailySnapshot
-        - AdminChange
+        - Treasury
       abis:
         - name: ZybraGroupV2
           file: ZybraGroupV2\abis\ZybraGroupV2.json
       eventHandlers:
         - event: Joined(indexed address)
           handler: handleJoined
-        - event: Left(indexed address,uint256)
+        - event: Left(indexed address)
           handler: handleLeft
-        - event: Contributed(indexed address,uint256,uint256,uint256)
+        - event: Contributed(indexed address,uint256,uint256)
           handler: handleContributed
         - event: YieldClaimed(indexed address,uint256)
           handler: handleYieldClaimed
-        - event: YieldAccrued(uint256,uint256)
-          handler: handleYieldAccrued
-        - event: YieldDistributed(uint256,uint256,uint256)
-          handler: handleYieldDistributed
-        - event: BatchYieldDistributed(uint256[],uint256)
-          handler: handleBatchYieldDistributed
         - event: Withdrawn(indexed address,uint256,uint256)
           handler: handleWithdrawn
-        - event: GroupStartedEvent(uint256)
+        - event: GroupStarted(uint256)
           handler: handleGroupStarted
-        - event: GroupEndedEvent(uint256)
+        - event: GroupEnded(uint256)
           handler: handleGroupEnded
-        - event: AdminChanged(indexed address,indexed address)
-          handler: handleAdminChanged
-        - event: ProtocolFeeCollected(uint256,uint256)
-          handler: handleProtocolFeeCollected
-        - event: ProtocolFeeRecipientChanged(indexed address,indexed address)
-          handler: handleProtocolFeeRecipientChanged
+        - event: TreasuryUpdated(indexed address,indexed address)
+          handler: handleTreasuryUpdated
+        - event: FeesCollected(indexed address,uint256)
+          handler: handleFeesCollected
         - event: Paused()
           handler: handlePaused
         - event: Unpaused()

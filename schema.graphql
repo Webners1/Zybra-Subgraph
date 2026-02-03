@@ -19,7 +19,6 @@ type Protocol @entity {
   endedGroups: BigInt!
   totalUsers: BigInt!
   totalContributions: BigInt!
-  totalYieldGenerated: BigInt!
   totalYieldClaimed: BigInt!
   totalProtocolFees: BigInt!
   factoryAddress: Bytes!
@@ -35,7 +34,6 @@ type Protocol @entity {
 Global User entity - aggregates data across all groups
 Query: Get user's overall investment and yield stats
 - Excludes ended groups from activeGroupsCount
-- Tracks pending yield only from active groups
 """
 type User @entity {
   id: ID! # user address (lowercase)
@@ -43,14 +41,14 @@ type User @entity {
 
   # Aggregated stats across ALL groups (including ended)
   totalContributed: BigInt!
-  totalYieldEarned: BigInt!
   totalYieldClaimed: BigInt!
+  totalYieldAccrued: BigInt! # claimed + pending (best-effort)
   totalWithdrawn: BigInt!
   totalCapitalWithdrawn: BigInt!
 
   # Active stats (excludes ended groups)
   activeCapital: BigInt!
-  pendingYield: BigInt!
+  pendingYield: BigInt! # best-effort from on-chain view at event time
 
   # Group participation
   activeGroupsCount: Int!
@@ -63,7 +61,6 @@ type User @entity {
   yieldClaims: [YieldClaim!]! @derivedFrom(field: "user")
   withdrawals: [Withdrawal!]! @derivedFrom(field: "user")
   dailySnapshots: [UserDailySnapshot!]! @derivedFrom(field: "user")
-  hourlyYieldSnapshots: [UserHourlyYield!]! @derivedFrom(field: "user")
 
   # Timestamps
   firstSeenAt: BigInt!
@@ -87,6 +84,7 @@ type Group @entity {
   # Configuration
   asset: Bytes! # ERC20 token address
   vault: Bytes! # Morpho vault address
+  treasury: Treasury # Treasury entity (set on TreasuryUpdated)
   contributionAmount: BigInt!
   cycleDuration: BigInt!
   totalCycles: BigInt!
@@ -102,14 +100,16 @@ type Group @entity {
   # Financial stats
   totalCapitalInGroup: BigInt!
   totalContributions: BigInt!
-  totalYieldGenerated: BigInt!
-  totalYieldDistributed: BigInt!
+  totalYieldGenerated: BigInt! # gross yield from on-chain view (best-effort)
   totalYieldClaimed: BigInt!
   totalProtocolFees: BigInt!
+  pendingYieldNet: BigInt! # net pending yield (best-effort)
+  totalCapitalWithdrawn: BigInt!
+  totalYieldWithdrawn: BigInt!
 
   # Time-weighted stats
   totalCapitalSeconds: BigInt!
-  accumulatedYieldPerCapSec: BigInt!
+  lastGlobalUpdateTime: BigInt!
 
   # Member stats
   membersCount: Int!
@@ -121,9 +121,8 @@ type Group @entity {
   cycles: [Cycle!]! @derivedFrom(field: "group")
   yieldClaims: [YieldClaim!]! @derivedFrom(field: "group")
   withdrawals: [Withdrawal!]! @derivedFrom(field: "group")
-  yieldEvents: [YieldEvent!]! @derivedFrom(field: "group")
+  feeCollections: [FeeCollection!]! @derivedFrom(field: "group")
   dailySnapshots: [GroupDailySnapshot!]! @derivedFrom(field: "group")
-  hourlySnapshots: [GroupHourlySnapshot!]! @derivedFrom(field: "group")
 
   # Timestamps
   createdAt: BigInt!
@@ -143,7 +142,7 @@ type Member @entity {
   # Capital tracking - INDIVIDUAL PER GROUP
   capitalInGroup: BigInt!
   capitalSeconds: BigInt!
-  yieldDebt: BigInt!
+  lastUpdateTime: BigInt!
 
   # Activity tracking
   lastContributedCycle: BigInt!
@@ -151,9 +150,11 @@ type Member @entity {
   totalContributedAmount: BigInt! # Sum of all contributions in this group
 
   # Yield tracking - INDIVIDUAL PER GROUP
-  totalYieldEarned: BigInt!
   totalYieldClaimed: BigInt!
-  pendingYield: BigInt!
+  totalYieldAccrued: BigInt! # claimed + pending (best-effort)
+  pendingYield: BigInt! # best-effort from on-chain view at event time
+  totalCapitalWithdrawn: BigInt!
+  totalYieldWithdrawn: BigInt!
   lastYieldClaimAt: BigInt
 
   # Status
@@ -164,7 +165,6 @@ type Member @entity {
   # Relationships
   contributions: [Contribution!]! @derivedFrom(field: "member")
   yieldClaims: [YieldClaim!]! @derivedFrom(field: "member")
-  yieldSnapshots: [MemberYieldSnapshot!]! @derivedFrom(field: "member")
 
   # Timestamps
   joinedAt: BigInt!
@@ -248,7 +248,7 @@ type Withdrawal @entity {
 
 """
 Cycle - Per-cycle data for a group
-Query: Get historical yield data per cycle
+Query: Get historical contribution data per cycle
 """
 type Cycle @entity {
   id: ID! # group_address + "_" + cycle_number
@@ -256,62 +256,26 @@ type Cycle @entity {
   cycleNumber: BigInt!
 
   # Capital at cycle start
-  eligibleCapital: BigInt!
   totalContributions: BigInt!
   contributorsCount: Int!
-
-  # Yield tracking
-  yieldGenerated: BigInt!
-  yieldDistributed: Boolean!
-  protocolFee: BigInt!
 
   # Timestamps
   startTime: BigInt
   endTime: BigInt
-  distributedAt: BigInt
 }
 
 # =============================================================================
-# YIELD TRACKING ENTITIES
+# FEE TRACKING ENTITIES
 # =============================================================================
 
 """
-YieldEvent - Tracks yield accrual and distribution events
+FeeCollection - Protocol fee collection events
 """
-type YieldEvent @entity {
+type FeeCollection @entity {
   id: ID! # tx_hash + "_" + log_index
   group: Group!
-  eventType: YieldEventType!
-
-  # Yield data
+  treasury: Treasury!
   amount: BigInt!
-  newYieldPerCapSec: BigInt
-  cycle: BigInt
-  totalYield: BigInt
-  eligibleCapital: BigInt
-
-  # Transaction info
-  txHash: Bytes!
-  blockNumber: BigInt!
-  timestamp: BigInt!
-  logIndex: BigInt!
-}
-
-enum YieldEventType {
-  ACCRUED
-  DISTRIBUTED
-  BATCH_DISTRIBUTED
-}
-
-"""
-ProtocolFeeCollection - Protocol fee collection events
-"""
-type ProtocolFeeCollection @entity {
-  id: ID! # tx_hash + "_" + log_index
-  group: Group!
-  amount: BigInt!
-  cycle: BigInt!
-  recipient: Bytes!
 
   # Transaction info
   txHash: Bytes!
@@ -336,34 +300,18 @@ type UserDailySnapshot @entity {
 
   # Cumulative totals
   totalContributed: BigInt!
-  totalYieldEarned: BigInt!
   totalYieldClaimed: BigInt!
+  totalYieldAccrued: BigInt!
   activeCapital: BigInt!
   pendingYield: BigInt!
+  totalWithdrawn: BigInt!
 
   # Daily deltas (changes that day)
   dailyContributions: BigInt!
-  dailyYieldEarned: BigInt!
   dailyYieldClaimed: BigInt!
+  dailyWithdrawals: BigInt!
 
   activeGroups: Int!
-}
-
-"""
-UserHourlyYield - Hourly yield data for user (for detailed charts)
-"""
-type UserHourlyYield @entity {
-  id: ID! # user_address + "_" + hour_timestamp
-  user: User!
-  hourTimestamp: BigInt!
-
-  # Cumulative yield
-  cumulativeYieldEarned: BigInt!
-  cumulativeYieldClaimed: BigInt!
-
-  # Hourly delta
-  hourlyYieldEarned: BigInt!
-  hourlyYieldClaimed: BigInt!
 }
 
 """
@@ -380,47 +328,19 @@ type GroupDailySnapshot @entity {
   totalCapital: BigInt!
   totalYieldGenerated: BigInt!
   totalYieldClaimed: BigInt!
+  totalProtocolFees: BigInt!
+  pendingYieldNet: BigInt!
+  totalCapitalWithdrawn: BigInt!
+  totalYieldWithdrawn: BigInt!
 
   # Daily deltas
   dailyContributions: BigInt!
-  dailyYieldGenerated: BigInt!
   dailyYieldClaimed: BigInt!
   dailyWithdrawals: BigInt!
+  dailyFeesCollected: BigInt!
 
   membersCount: Int!
   currentCycle: BigInt!
-}
-
-"""
-GroupHourlySnapshot - Hourly snapshot for detailed group charts
-"""
-type GroupHourlySnapshot @entity {
-  id: ID! # group_address + "_" + hour_timestamp
-  group: Group!
-  hourTimestamp: BigInt!
-
-  totalCapital: BigInt!
-  totalYieldGenerated: BigInt!
-
-  hourlyContributions: BigInt!
-  hourlyYieldGenerated: BigInt!
-}
-
-"""
-MemberYieldSnapshot - Track member's yield over time (for individual charts)
-"""
-type MemberYieldSnapshot @entity {
-  id: ID! # member_id + "_" + day_timestamp
-  member: Member!
-  dayTimestamp: BigInt!
-
-  capitalInGroup: BigInt!
-  cumulativeYieldEarned: BigInt!
-  cumulativeYieldClaimed: BigInt!
-  pendingYield: BigInt!
-
-  dailyYieldEarned: BigInt!
-  dailyYieldClaimed: BigInt!
 }
 
 # =============================================================================
@@ -441,32 +361,27 @@ type ProtocolDailySnapshot @entity {
 
   # Cumulative
   totalContributions: BigInt!
-  totalYieldGenerated: BigInt!
   totalYieldClaimed: BigInt!
+  totalProtocolFees: BigInt!
 
   # Daily
   dailyContributions: BigInt!
-  dailyYieldGenerated: BigInt!
   dailyYieldClaimed: BigInt!
+  dailyFeesCollected: BigInt!
   dailyNewUsers: BigInt!
   dailyNewGroups: BigInt!
 }
 
 # =============================================================================
-# ADMIN EVENTS
+# TREASURY
 # =============================================================================
 
 """
-AdminChange - Tracks admin changes in groups
+Treasury - Protocol fee receiver
 """
-type AdminChange @entity {
-  id: ID! # tx_hash + "_" + log_index
-  group: Group!
-  oldAdmin: Bytes!
-  newAdmin: Bytes!
-
-  # Transaction info
-  txHash: Bytes!
-  blockNumber: BigInt!
-  timestamp: BigInt!
+type Treasury @entity {
+  id: ID! # treasury address (lowercase)
+  address: Bytes!
+  totalFeesCollected: BigInt!
+  groups: [Group!]! @derivedFrom(field: "treasury")
 }

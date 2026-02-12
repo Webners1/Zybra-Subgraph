@@ -11,9 +11,9 @@ dataSources:
     # ========================================
     network: sepolia
     source:
-      address: "0xf1C4C22Ad8f22F3bA45bacA3e8C447A224f5aCa4"
+      address: "0x7130368fc4Db3c3d9a47Af71dE44b55799ba0b6d"
       abi: ZybraGroupFactoryV2
-      startBlock: 10086719 # Approximate Sepolia block - adjust if needed
+      startBlock: 10236635 # Sepolia deployment block for 0x7130368f...
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9

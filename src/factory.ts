@@ -1,6 +1,6 @@
 import { BigInt, Address, Bytes } from "@graphprotocol/graph-ts";
-import { GroupDeployed } from "../generated/ZybraGroupFactoryV2/ZybraGroupFactoryV2";
-import { ZybraGroupV2 as ZybraGroupV2Template } from "../generated/templates";
+import { GroupDeployed } from "../generated/ZybraGroupFactory/ZybraGroupFactory";
+import { ZybraGroup as ZybraGroupTemplate } from "../generated/templates";
 import { Protocol, Group, ProtocolDailySnapshot } from "../generated/schema";
 
 // Constants
@@ -93,9 +93,8 @@ export function handleGroupDeployed(event: GroupDeployed): void {
   group.totalCapitalWithdrawn = ZERO;
   group.totalYieldWithdrawn = ZERO;
 
-  // Initialize time-weighted stats
-  group.totalCapitalSeconds = ZERO;
-  group.lastGlobalUpdateTime = event.block.timestamp;
+  // Initialize admin transfer tracking
+  group.pendingAdmin = null;
 
   // Initialize member stats
   group.membersCount = 0;
@@ -111,5 +110,5 @@ export function handleGroupDeployed(event: GroupDeployed): void {
   updateProtocolDailySnapshot(event.block.timestamp, protocol);
 
   // Create data source from template to start indexing this group
-  ZybraGroupV2Template.create(event.params.groupAddress);
+  ZybraGroupTemplate.create(event.params.groupAddress);
 }

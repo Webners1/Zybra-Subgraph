@@ -107,9 +107,8 @@ type Group @entity {
   totalCapitalWithdrawn: BigInt!
   totalYieldWithdrawn: BigInt!
 
-  # Time-weighted stats
-  totalCapitalSeconds: BigInt!
-  lastGlobalUpdateTime: BigInt!
+  # Admin transfer
+  pendingAdmin: Bytes
 
   # Member stats
   membersCount: Int!
@@ -141,8 +140,6 @@ type Member @entity {
 
   # Capital tracking - INDIVIDUAL PER GROUP
   capitalInGroup: BigInt!
-  capitalSeconds: BigInt!
-  lastUpdateTime: BigInt!
 
   # Activity tracking
   lastContributedCycle: BigInt!
@@ -160,6 +157,7 @@ type Member @entity {
   # Status
   isActive: Boolean!
   hasWithdrawn: Boolean!
+  hasEmergencyWithdrawn: Boolean!
   inEndedGroup: Boolean! # TRUE when group has ended
 
   # Relationships
@@ -370,6 +368,69 @@ type ProtocolDailySnapshot @entity {
   dailyFeesCollected: BigInt!
   dailyNewUsers: BigInt!
   dailyNewGroups: BigInt!
+}
+
+# =============================================================================
+# EMERGENCY WITHDRAWAL ENTITIES
+# =============================================================================
+
+"""
+EmergencyWithdrawal - Capital-only emergency withdrawal (yield forfeited)
+"""
+type EmergencyWithdrawal @entity {
+  id: ID! # tx_hash + "_" + log_index
+  user: User!
+  group: Group!
+
+  capitalAmount: BigInt!
+  forfeitedYield: BigInt!
+
+  # Transaction info
+  txHash: Bytes!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  logIndex: BigInt!
+}
+
+# =============================================================================
+# ADMIN TRANSFER ENTITIES
+# =============================================================================
+
+"""
+AdminTransfer - 2-step admin transfer tracking
+"""
+type AdminTransfer @entity {
+  id: ID! # tx_hash + "_" + log_index
+  group: Group!
+  transferType: String! # "proposed" or "completed"
+  fromAdmin: Bytes!
+  toAdmin: Bytes!
+
+  # Transaction info
+  txHash: Bytes!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  logIndex: BigInt!
+}
+
+# =============================================================================
+# TOKEN SWEEP ENTITIES
+# =============================================================================
+
+"""
+TokenSweep - Recovery of accidentally sent tokens
+"""
+type TokenSweep @entity {
+  id: ID! # tx_hash + "_" + log_index
+  group: Group!
+  token: Bytes!
+  amount: BigInt!
+
+  # Transaction info
+  txHash: Bytes!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  logIndex: BigInt!
 }
 
 # =============================================================================

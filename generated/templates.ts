@@ -6,14 +6,14 @@ import {
   DataSourceContext,
 } from "@graphprotocol/graph-ts";
 
-export class ZybraGroupV2 extends DataSourceTemplate {
+export class ZybraGroup extends DataSourceTemplate {
   static create(address: Address): void {
-    DataSourceTemplate.create("ZybraGroupV2", [address.toHex()]);
+    DataSourceTemplate.create("ZybraGroup", [address.toHex()]);
   }
 
   static createWithContext(address: Address, context: DataSourceContext): void {
     DataSourceTemplate.createWithContext(
-      "ZybraGroupV2",
+      "ZybraGroup",
       [address.toHex()],
       context,
     );

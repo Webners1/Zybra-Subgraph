@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install)",
+      "Bash(npm run codegen:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx graph deploy:*)",
+      "WebFetch(domain:api.studio.thegraph.com)",
+      "Bash(curl:*)",
+      "Bash(if not exist \"%USERPROFILE%\\\\.claude\" mkdir \"%USERPROFILE%\\\\.claude\")"
+    ]
+  }
+}

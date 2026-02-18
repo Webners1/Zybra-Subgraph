@@ -1,0 +1,15 @@
+{
+  "mcp": {
+    "servers": {
+      "subgraph-mcp": {
+        "command": "npx",
+        "args": [
+          "mcp-remote",
+          "--header",
+          "Authorization:Bearer ad26662628fef14a31d422fc9f0bba50",
+          "https://subgraphs.mcp.thegraph.com/sse"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,30 @@
+[
+  {
+    "type": "event",
+    "name": "GroupDeployed",
+    "inputs": [
+      { "name": "groupAddress", "type": "address", "indexed": true },
+      { "name": "admin", "type": "address", "indexed": true },
+      { "name": "asset", "type": "address", "indexed": true },
+      { "name": "contributionAmount", "type": "uint256", "indexed": false },
+      { "name": "cycleDuration", "type": "uint256", "indexed": false },
+      { "name": "totalCycles", "type": "uint256", "indexed": false },
+      { "name": "vault", "type": "address", "indexed": false }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "function",
+    "name": "deployedGroups",
+    "inputs": [{ "name": "", "type": "uint256" }],
+    "outputs": [{ "name": "", "type": "address" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getAllDeployedGroups",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "address[]" }],
+    "stateMutability": "view"
+  }
+]

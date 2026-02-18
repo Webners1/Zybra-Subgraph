@@ -1,0 +1,89 @@
+specVersion: 1.0.0
+indexerHints:
+  prune: auto
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: ZybraGroupFactoryV2
+    # ========================================
+    # UPDATE THESE VALUES FOR YOUR DEPLOYMENT
+    # ========================================
+    network: sepolia
+    source:
+      address: "0x7130368fc4Db3c3d9a47Af71dE44b55799ba0b6d"
+      abi: ZybraGroupFactoryV2
+      startBlock: 10236635 # Sepolia deployment block for 0x7130368f...
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Protocol
+        - Group
+      abis:
+        - name: ZybraGroupFactoryV2
+          file: ./abis/ZybraGroupFactoryV2.json
+        - name: ZybraGroupV2
+          file: ./abis/ZybraGroupV2.json
+      eventHandlers:
+        - event: GroupDeployed(indexed address,indexed address,indexed address,uint256,uint256,uint256,address)
+          handler: handleGroupDeployed
+      file: ./src/factory.ts
+
+templates:
+  - kind: ethereum
+    name: ZybraGroupV2
+    network: sepolia
+    source:
+      abi: ZybraGroupV2
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - User
+        - Group
+        - Member
+        - Contribution
+        - YieldClaim
+        - Withdrawal
+        - Cycle
+        - FeeCollection
+        - UserDailySnapshot
+        - GroupDailySnapshot
+        - Treasury
+      abis:
+        - name: ZybraGroupV2
+          file: ./abis/ZybraGroupV2.json
+      eventHandlers:
+        # Member events
+        - event: Joined(indexed address)
+          handler: handleJoined
+        - event: Left(indexed address)
+          handler: handleLeft
+        # Contribution events
+        - event: Contributed(indexed address,uint256,uint256)
+          handler: handleContributed
+        # Yield events
+        - event: YieldClaimed(indexed address,uint256)
+          handler: handleYieldClaimed
+        # Withdrawal events
+        - event: Withdrawn(indexed address,uint256,uint256)
+          handler: handleWithdrawn
+        # Group lifecycle events
+        - event: GroupStarted(uint256)
+          handler: handleGroupStarted
+        - event: GroupEnded(uint256)
+          handler: handleGroupEnded
+        # Treasury / fee events
+        - event: TreasuryUpdated(indexed address,indexed address)
+          handler: handleTreasuryUpdated
+        - event: FeesCollected(indexed address,uint256)
+          handler: handleFeesCollected
+        # Pause events
+        - event: Paused()
+          handler: handlePaused
+        - event: Unpaused()
+          handler: handleUnpaused
+      file: ./src/group.ts

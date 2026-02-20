@@ -5,14 +5,18 @@ import {
   Contributed,
   Withdrawn,
   YieldClaimed,
+  EmergencyWithdrawn,
   GroupStarted,
   GroupEnded,
   TreasuryUpdated,
   FeesCollected,
+  AdminTransferProposed,
+  AdminTransferred,
+  TokenSwept,
   Paused,
   Unpaused,
-  ZybraGroupV2,
-} from "../generated/templates/ZybraGroupV2/ZybraGroupV2";
+  ZybraGroup,
+} from "../generated/templates/ZybraGroup/ZybraGroup";
 import {
   Protocol,
   User,
@@ -21,8 +25,11 @@ import {
   Contribution,
   YieldClaim,
   Withdrawal,
+  EmergencyWithdrawal,
   Cycle,
   FeeCollection,
+  AdminTransfer,
+  TokenSweep,
   UserDailySnapshot,
   GroupDailySnapshot,
   ProtocolDailySnapshot,
@@ -87,8 +94,6 @@ function getOrCreateMember(
     member.user = user.id;
     member.group = group.id;
     member.capitalInGroup = ZERO;
-    member.capitalSeconds = ZERO;
-    member.lastUpdateTime = timestamp;
     member.pendingYield = ZERO;
     member.lastContributedCycle = ZERO;
     member.contributionsCount = 0;
@@ -100,6 +105,7 @@ function getOrCreateMember(
     member.lastYieldClaimAt = null;
     member.isActive = false;
     member.hasWithdrawn = false;
+    member.hasEmergencyWithdrawn = false;
     member.inEndedGroup = group.groupEnded;
     member.joinedAt = timestamp;
     member.leftAt = null;
@@ -127,32 +133,25 @@ function getOrCreateCycle(group: Group, cycleNumber: BigInt): Cycle {
 }
 
 function getDayTimestamp(timestamp: BigInt): BigInt {
-  return timestamp.div(BigInt.fromI32(SECONDS_PER_DAY)).times(BigInt.fromI32(SECONDS_PER_DAY));
+  return timestamp
+    .div(BigInt.fromI32(SECONDS_PER_DAY))
+    .times(BigInt.fromI32(SECONDS_PER_DAY));
 }
 
 function createEventId(event: ethereum.Event): string {
-  return event.transaction.hash.toHexString() + "_" + event.logIndex.toString();
+  return (
+    event.transaction.hash.toHexString() + "_" + event.logIndex.toString()
+  );
 }
 
-function updateGroupCapitalSeconds(group: Group, timestamp: BigInt): void {
-  let elapsed = timestamp.minus(group.lastGlobalUpdateTime);
-  if (elapsed.gt(ZERO) && group.totalCapitalInGroup.gt(ZERO)) {
-    group.totalCapitalSeconds = group.totalCapitalSeconds.plus(group.totalCapitalInGroup.times(elapsed));
-  }
-  group.lastGlobalUpdateTime = timestamp;
-}
-
-function updateMemberCapitalSeconds(member: Member, timestamp: BigInt): void {
-  let elapsed = timestamp.minus(member.lastUpdateTime);
-  if (elapsed.gt(ZERO) && member.capitalInGroup.gt(ZERO)) {
-    member.capitalSeconds = member.capitalSeconds.plus(member.capitalInGroup.times(elapsed));
-  }
-  member.lastUpdateTime = timestamp;
-}
-
+/**
+ * Update group yield stats from on-chain contract view functions.
+ * V3 uses MasterChef accumulator pattern — getGroupStatus() returns:
+ *   (started, ended, currentCycle, totalMembers, totalCapital, totalYield, feesAccumulated)
+ */
 function updateGroupYieldFromChain(
   group: Group,
-  contract: ZybraGroupV2,
+  contract: ZybraGroup,
   timestamp: BigInt
 ): void {
   let statusResult = contract.try_getGroupStatus();
@@ -175,10 +174,15 @@ function updateGroupYieldFromChain(
   group.updatedAt = timestamp;
 }
 
+/**
+ * Update member pending yield from on-chain view.
+ * V3 getMemberInfo() returns:
+ *   (capitalInGroup, pendingYieldAmount, lastContributedCycle, isActive)
+ */
 function updateMemberPendingFromChain(
   user: User,
   member: Member,
-  contract: ZybraGroupV2
+  contract: ZybraGroup
 ): void {
   let oldPending = member.pendingYield;
   let userAddress = Address.fromString(user.id);
@@ -186,7 +190,7 @@ function updateMemberPendingFromChain(
   if (infoResult.reverted) return;
 
   let info = infoResult.value;
-  let newPending = info.value1;
+  let newPending = info.value1; // pendingYieldAmount
 
   member.pendingYield = newPending;
   member.totalYieldAccrued = member.totalYieldClaimed.plus(newPending);
@@ -233,8 +237,10 @@ function updateUserDailySnapshot(
   snapshot.activeGroups = user.activeGroupsCount;
 
   // Update daily deltas
-  snapshot.dailyContributions = snapshot.dailyContributions.plus(contributionDelta);
-  snapshot.dailyYieldClaimed = snapshot.dailyYieldClaimed.plus(yieldClaimedDelta);
+  snapshot.dailyContributions =
+    snapshot.dailyContributions.plus(contributionDelta);
+  snapshot.dailyYieldClaimed =
+    snapshot.dailyYieldClaimed.plus(yieldClaimedDelta);
   snapshot.dailyWithdrawals = snapshot.dailyWithdrawals.plus(withdrawalDelta);
 
   snapshot.save();
@@ -273,10 +279,13 @@ function updateGroupDailySnapshot(
   snapshot.membersCount = group.membersCount;
   snapshot.currentCycle = group.currentCycle;
 
-  snapshot.dailyContributions = snapshot.dailyContributions.plus(contributionDelta);
-  snapshot.dailyYieldClaimed = snapshot.dailyYieldClaimed.plus(yieldClaimedDelta);
+  snapshot.dailyContributions =
+    snapshot.dailyContributions.plus(contributionDelta);
+  snapshot.dailyYieldClaimed =
+    snapshot.dailyYieldClaimed.plus(yieldClaimedDelta);
   snapshot.dailyWithdrawals = snapshot.dailyWithdrawals.plus(withdrawalDelta);
-  snapshot.dailyFeesCollected = snapshot.dailyFeesCollected.plus(feesCollectedDelta);
+  snapshot.dailyFeesCollected =
+    snapshot.dailyFeesCollected.plus(feesCollectedDelta);
 
   snapshot.save();
 }
@@ -314,23 +323,16 @@ function updateProtocolDailySnapshot(
   snapshot.totalYieldClaimed = protocol.totalYieldClaimed;
   snapshot.totalProtocolFees = protocol.totalProtocolFees;
 
-  snapshot.dailyContributions = snapshot.dailyContributions.plus(contributionDelta);
-  snapshot.dailyYieldClaimed = snapshot.dailyYieldClaimed.plus(yieldClaimedDelta);
-  snapshot.dailyFeesCollected = snapshot.dailyFeesCollected.plus(feesCollectedDelta);
+  snapshot.dailyContributions =
+    snapshot.dailyContributions.plus(contributionDelta);
+  snapshot.dailyYieldClaimed =
+    snapshot.dailyYieldClaimed.plus(yieldClaimedDelta);
+  snapshot.dailyFeesCollected =
+    snapshot.dailyFeesCollected.plus(feesCollectedDelta);
   snapshot.dailyNewUsers = snapshot.dailyNewUsers.plus(newUsersDelta);
   snapshot.dailyNewGroups = snapshot.dailyNewGroups.plus(newGroupsDelta);
 
   snapshot.save();
-}
-
-// ============================================================================
-// HELPER: Mark all members when group ends
-// ============================================================================
-
-function markMembersInEndedGroup(group: Group): void {
-  // Note: In AssemblyScript, we can't iterate over derived fields
-  // Members will be marked when they next interact with the contract
-  // The inEndedGroup flag is updated in handleGroupEnded for new queries
 }
 
 // ============================================================================
@@ -348,7 +350,6 @@ export function handleJoined(event: Joined): void {
   // Update member
   member.isActive = true;
   member.inEndedGroup = group.groupEnded;
-  member.lastUpdateTime = event.block.timestamp;
   member.lastActivityAt = event.block.timestamp;
   member.save();
 
@@ -365,7 +366,14 @@ export function handleJoined(event: Joined): void {
   group.save();
 
   updateUserDailySnapshot(user, event.block.timestamp, ZERO, ZERO, ZERO);
-  updateGroupDailySnapshot(group, event.block.timestamp, ZERO, ZERO, ZERO, ZERO);
+  updateGroupDailySnapshot(
+    group,
+    event.block.timestamp,
+    ZERO,
+    ZERO,
+    ZERO,
+    ZERO
+  );
 }
 
 export function handleLeft(event: Left): void {
@@ -384,7 +392,6 @@ export function handleLeft(event: Left): void {
 
   // Update member
   member.isActive = false;
-  member.lastUpdateTime = event.block.timestamp;
   member.leftAt = event.block.timestamp;
   member.lastActivityAt = event.block.timestamp;
   member.save();
@@ -400,7 +407,14 @@ export function handleLeft(event: Left): void {
   group.save();
 
   updateUserDailySnapshot(user, event.block.timestamp, ZERO, ZERO, ZERO);
-  updateGroupDailySnapshot(group, event.block.timestamp, ZERO, ZERO, ZERO, ZERO);
+  updateGroupDailySnapshot(
+    group,
+    event.block.timestamp,
+    ZERO,
+    ZERO,
+    ZERO,
+    ZERO
+  );
 }
 
 // Contribution Events - CRITICAL FOR TRACKING
@@ -413,10 +427,6 @@ export function handleContributed(event: Contributed): void {
   let cycle = getOrCreateCycle(group, event.params.cycle);
 
   let amount = event.params.amount;
-
-  // Update time-weighted capital before changing balances
-  updateGroupCapitalSeconds(group, event.block.timestamp);
-  updateMemberCapitalSeconds(member, event.block.timestamp);
 
   // Update member FIRST (individual tracking per group)
   member.capitalInGroup = member.capitalInGroup.plus(amount);
@@ -460,7 +470,8 @@ export function handleContributed(event: Contributed): void {
   group.updatedAt = event.block.timestamp;
   group.save();
 
-  let contract = ZybraGroupV2.bind(event.address);
+  // Query on-chain data for yield updates
+  let contract = ZybraGroup.bind(event.address);
   updateGroupYieldFromChain(group, contract, event.block.timestamp);
   updateMemberPendingFromChain(user, member, contract);
   user.totalYieldAccrued = user.totalYieldClaimed.plus(user.pendingYield);
@@ -478,8 +489,22 @@ export function handleContributed(event: Contributed): void {
 
   // Update all snapshots for charts
   updateUserDailySnapshot(user, event.block.timestamp, amount, ZERO, ZERO);
-  updateGroupDailySnapshot(group, event.block.timestamp, amount, ZERO, ZERO, ZERO);
-  updateProtocolDailySnapshot(event.block.timestamp, amount, ZERO, ZERO, ZERO, ZERO);
+  updateGroupDailySnapshot(
+    group,
+    event.block.timestamp,
+    amount,
+    ZERO,
+    ZERO,
+    ZERO
+  );
+  updateProtocolDailySnapshot(
+    event.block.timestamp,
+    amount,
+    ZERO,
+    ZERO,
+    ZERO,
+    ZERO
+  );
 }
 
 // Yield Events - CRITICAL FOR TRACKING
@@ -495,10 +520,6 @@ export function handleYieldClaimed(event: YieldClaimed): void {
   if (member == null) return;
 
   let amount = event.params.amount;
-
-  // Update time-weighted capital before accounting
-  updateGroupCapitalSeconds(group, event.block.timestamp);
-  updateMemberCapitalSeconds(member, event.block.timestamp);
 
   // Update member FIRST (individual tracking per group)
   member.totalYieldClaimed = member.totalYieldClaimed.plus(amount);
@@ -531,7 +552,8 @@ export function handleYieldClaimed(event: YieldClaimed): void {
   group.updatedAt = event.block.timestamp;
   group.save();
 
-  let contract = ZybraGroupV2.bind(event.address);
+  // Query on-chain data
+  let contract = ZybraGroup.bind(event.address);
   updateGroupYieldFromChain(group, contract, event.block.timestamp);
   updateMemberPendingFromChain(user, member, contract);
   user.totalYieldAccrued = user.totalYieldClaimed.plus(user.pendingYield);
@@ -549,11 +571,25 @@ export function handleYieldClaimed(event: YieldClaimed): void {
 
   // Update all snapshots for charts
   updateUserDailySnapshot(user, event.block.timestamp, ZERO, amount, ZERO);
-  updateGroupDailySnapshot(group, event.block.timestamp, ZERO, amount, ZERO, ZERO);
-  updateProtocolDailySnapshot(event.block.timestamp, ZERO, amount, ZERO, ZERO, ZERO);
+  updateGroupDailySnapshot(
+    group,
+    event.block.timestamp,
+    ZERO,
+    amount,
+    ZERO,
+    ZERO
+  );
+  updateProtocolDailySnapshot(
+    event.block.timestamp,
+    ZERO,
+    amount,
+    ZERO,
+    ZERO,
+    ZERO
+  );
 }
 
-// Withdrawal Events
+// Withdrawal Events — V3: Withdrawn(address member, uint256 capital, uint256 yield)
 export function handleWithdrawn(event: Withdrawn): void {
   let group = Group.load(event.address.toHexString().toLowerCase());
   if (group == null) return;
@@ -566,12 +602,9 @@ export function handleWithdrawn(event: Withdrawn): void {
   if (member == null) return;
 
   let capitalAmount = event.params.capital;
+  // In the ABI, the param is named "yieldAmount" (renamed from "yield" which is a reserved word)
   let yieldAmount = event.params.yieldAmount;
   let totalAmount = capitalAmount.plus(yieldAmount);
-
-  // Update time-weighted capital before changing balances
-  updateGroupCapitalSeconds(group, event.block.timestamp);
-  updateMemberCapitalSeconds(member, event.block.timestamp);
 
   // Create withdrawal entity
   let withdrawalId = createEventId(event);
@@ -592,8 +625,8 @@ export function handleWithdrawn(event: Withdrawn): void {
   member.hasWithdrawn = true;
   member.isActive = false;
   member.totalYieldClaimed = member.totalYieldClaimed.plus(yieldAmount);
-  member.totalYieldAccrued = member.totalYieldClaimed.plus(member.pendingYield);
-  member.totalCapitalWithdrawn = member.totalCapitalWithdrawn.plus(capitalAmount);
+  member.totalCapitalWithdrawn =
+    member.totalCapitalWithdrawn.plus(capitalAmount);
   member.totalYieldWithdrawn = member.totalYieldWithdrawn.plus(yieldAmount);
   member.capitalInGroup = ZERO;
   member.pendingYield = ZERO;
@@ -625,7 +658,7 @@ export function handleWithdrawn(event: Withdrawn): void {
   group.updatedAt = event.block.timestamp;
   group.save();
 
-  let contract = ZybraGroupV2.bind(event.address);
+  let contract = ZybraGroup.bind(event.address);
   updateGroupYieldFromChain(group, contract, event.block.timestamp);
   group.save();
 
@@ -638,9 +671,112 @@ export function handleWithdrawn(event: Withdrawn): void {
   }
 
   // Update snapshots
-  updateUserDailySnapshot(user, event.block.timestamp, ZERO, yieldAmount, totalAmount);
-  updateGroupDailySnapshot(group, event.block.timestamp, ZERO, yieldAmount, totalAmount, ZERO);
-  updateProtocolDailySnapshot(event.block.timestamp, ZERO, yieldAmount, ZERO, ZERO, ZERO);
+  updateUserDailySnapshot(
+    user,
+    event.block.timestamp,
+    ZERO,
+    yieldAmount,
+    totalAmount
+  );
+  updateGroupDailySnapshot(
+    group,
+    event.block.timestamp,
+    ZERO,
+    yieldAmount,
+    totalAmount,
+    ZERO
+  );
+  updateProtocolDailySnapshot(
+    event.block.timestamp,
+    ZERO,
+    yieldAmount,
+    ZERO,
+    ZERO,
+    ZERO
+  );
+}
+
+// Emergency Withdrawal Events (V3 NEW)
+export function handleEmergencyWithdrawn(event: EmergencyWithdrawn): void {
+  let group = Group.load(event.address.toHexString().toLowerCase());
+  if (group == null) return;
+
+  let user = User.load(event.params.member.toHexString().toLowerCase());
+  if (user == null) return;
+
+  let memberId = group.id + "_" + user.id;
+  let member = Member.load(memberId);
+  if (member == null) return;
+
+  let capitalAmount = event.params.capital;
+  let forfeitedYield = event.params.forfeitedYield;
+
+  // Create emergency withdrawal entity
+  let emergencyId = createEventId(event);
+  let emergencyWithdrawal = new EmergencyWithdrawal(emergencyId);
+  emergencyWithdrawal.user = user.id;
+  emergencyWithdrawal.group = group.id;
+  emergencyWithdrawal.capitalAmount = capitalAmount;
+  emergencyWithdrawal.forfeitedYield = forfeitedYield;
+  emergencyWithdrawal.txHash = event.transaction.hash;
+  emergencyWithdrawal.blockNumber = event.block.number;
+  emergencyWithdrawal.timestamp = event.block.timestamp;
+  emergencyWithdrawal.logIndex = event.logIndex;
+  emergencyWithdrawal.save();
+
+  // Update member
+  let oldPending = member.pendingYield;
+  member.hasEmergencyWithdrawn = true;
+  member.isActive = false;
+  member.totalCapitalWithdrawn =
+    member.totalCapitalWithdrawn.plus(capitalAmount);
+  member.capitalInGroup = ZERO;
+  member.pendingYield = ZERO;
+  member.totalYieldAccrued = member.totalYieldClaimed;
+  member.lastActivityAt = event.block.timestamp;
+  member.save();
+
+  // Update user (aggregate)
+  user.totalWithdrawn = user.totalWithdrawn.plus(capitalAmount);
+  user.totalCapitalWithdrawn = user.totalCapitalWithdrawn.plus(capitalAmount);
+  user.activeCapital = user.activeCapital.minus(capitalAmount);
+  if (user.pendingYield.ge(oldPending)) {
+    user.pendingYield = user.pendingYield.minus(oldPending);
+  } else {
+    user.pendingYield = ZERO;
+  }
+  user.totalYieldAccrued = user.totalYieldClaimed.plus(user.pendingYield);
+  user.activeGroupsCount = user.activeGroupsCount - 1;
+  user.lastActivityAt = event.block.timestamp;
+  user.save();
+
+  // Update group
+  group.totalCapitalInGroup = group.totalCapitalInGroup.minus(capitalAmount);
+  group.totalCapitalWithdrawn = group.totalCapitalWithdrawn.plus(capitalAmount);
+  group.activeMembers = group.activeMembers - 1;
+  group.updatedAt = event.block.timestamp;
+  group.save();
+
+  let contract = ZybraGroup.bind(event.address);
+  updateGroupYieldFromChain(group, contract, event.block.timestamp);
+  group.save();
+
+  // Update snapshots
+  updateUserDailySnapshot(
+    user,
+    event.block.timestamp,
+    ZERO,
+    ZERO,
+    capitalAmount
+  );
+  updateGroupDailySnapshot(
+    group,
+    event.block.timestamp,
+    ZERO,
+    ZERO,
+    capitalAmount,
+    ZERO
+  );
 }
 
 // Group Lifecycle Events
@@ -651,15 +787,21 @@ export function handleGroupStarted(event: GroupStarted): void {
   group.groupStarted = true;
   group.startTime = event.params.timestamp;
   group.currentCycle = ONE;
-  group.lastGlobalUpdateTime = event.block.timestamp;
   group.updatedAt = event.block.timestamp;
   group.save();
 
-  let contract = ZybraGroupV2.bind(event.address);
+  let contract = ZybraGroup.bind(event.address);
   updateGroupYieldFromChain(group, contract, event.block.timestamp);
   group.save();
 
-  updateGroupDailySnapshot(group, event.block.timestamp, ZERO, ZERO, ZERO, ZERO);
+  updateGroupDailySnapshot(
+    group,
+    event.block.timestamp,
+    ZERO,
+    ZERO,
+    ZERO,
+    ZERO
+  );
 }
 
 export function handleGroupEnded(event: GroupEnded): void {
@@ -672,7 +814,7 @@ export function handleGroupEnded(event: GroupEnded): void {
   group.updatedAt = event.block.timestamp;
   group.save();
 
-  let contract = ZybraGroupV2.bind(event.address);
+  let contract = ZybraGroup.bind(event.address);
   updateGroupYieldFromChain(group, contract, event.block.timestamp);
   group.save();
 
@@ -685,7 +827,14 @@ export function handleGroupEnded(event: GroupEnded): void {
     protocol.save();
   }
 
-  updateGroupDailySnapshot(group, event.block.timestamp, ZERO, ZERO, ZERO, ZERO);
+  updateGroupDailySnapshot(
+    group,
+    event.block.timestamp,
+    ZERO,
+    ZERO,
+    ZERO,
+    ZERO
+  );
 }
 
 // Treasury / Fee Events
@@ -706,7 +855,7 @@ export function handleTreasuryUpdated(event: TreasuryUpdated): void {
   group.updatedAt = event.block.timestamp;
   group.save();
 
-  let contract = ZybraGroupV2.bind(event.address);
+  let contract = ZybraGroup.bind(event.address);
   updateGroupYieldFromChain(group, contract, event.block.timestamp);
   group.save();
 }
@@ -751,11 +900,95 @@ export function handleFeesCollected(event: FeesCollected): void {
     protocol.save();
   }
 
-  updateGroupDailySnapshot(group, event.block.timestamp, ZERO, ZERO, ZERO, amount);
-  updateProtocolDailySnapshot(event.block.timestamp, ZERO, ZERO, amount, ZERO, ZERO);
+  updateGroupDailySnapshot(
+    group,
+    event.block.timestamp,
+    ZERO,
+    ZERO,
+    ZERO,
+    amount
+  );
+  updateProtocolDailySnapshot(
+    event.block.timestamp,
+    ZERO,
+    ZERO,
+    amount,
+    ZERO,
+    ZERO
+  );
 
-  let contract = ZybraGroupV2.bind(event.address);
+  let contract = ZybraGroup.bind(event.address);
   updateGroupYieldFromChain(group, contract, event.block.timestamp);
+  group.save();
+}
+
+// Admin Transfer Events (V3 NEW — 2-step admin transfer)
+export function handleAdminTransferProposed(
+  event: AdminTransferProposed
+): void {
+  let group = Group.load(event.address.toHexString().toLowerCase());
+  if (group == null) return;
+
+  // Track the proposal
+  let transferId = createEventId(event);
+  let transfer = new AdminTransfer(transferId);
+  transfer.group = group.id;
+  transfer.transferType = "proposed";
+  transfer.fromAdmin = event.params.currentAdmin;
+  transfer.toAdmin = event.params.pendingAdmin;
+  transfer.txHash = event.transaction.hash;
+  transfer.blockNumber = event.block.number;
+  transfer.timestamp = event.block.timestamp;
+  transfer.logIndex = event.logIndex;
+  transfer.save();
+
+  // Update group pending admin
+  group.pendingAdmin = event.params.pendingAdmin;
+  group.updatedAt = event.block.timestamp;
+  group.save();
+}
+
+export function handleAdminTransferred(event: AdminTransferred): void {
+  let group = Group.load(event.address.toHexString().toLowerCase());
+  if (group == null) return;
+
+  // Track the completion
+  let transferId = createEventId(event);
+  let transfer = new AdminTransfer(transferId);
+  transfer.group = group.id;
+  transfer.transferType = "completed";
+  transfer.fromAdmin = event.params.oldAdmin;
+  transfer.toAdmin = event.params.newAdmin;
+  transfer.txHash = event.transaction.hash;
+  transfer.blockNumber = event.block.number;
+  transfer.timestamp = event.block.timestamp;
+  transfer.logIndex = event.logIndex;
+  transfer.save();
+
+  // Update group admin
+  group.admin = event.params.newAdmin;
+  group.pendingAdmin = null;
+  group.updatedAt = event.block.timestamp;
+  group.save();
+}
+
+// Token Sweep Events (V3 NEW — recover stray tokens)
+export function handleTokenSwept(event: TokenSwept): void {
+  let group = Group.load(event.address.toHexString().toLowerCase());
+  if (group == null) return;
+
+  let sweepId = createEventId(event);
+  let sweep = new TokenSweep(sweepId);
+  sweep.group = group.id;
+  sweep.token = event.params.token;
+  sweep.amount = event.params.amount;
+  sweep.txHash = event.transaction.hash;
+  sweep.blockNumber = event.block.number;
+  sweep.timestamp = event.block.timestamp;
+  sweep.logIndex = event.logIndex;
+  sweep.save();
+
+  group.updatedAt = event.block.timestamp;
   group.save();
 }
 
